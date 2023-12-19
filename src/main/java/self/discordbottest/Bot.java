@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -11,7 +12,6 @@ import java.util.Properties;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 
@@ -35,7 +35,7 @@ public class Bot {
     private String TOKEN = "";
     private static final Logger log = Logger.getLogger("log" );
     private static final Map<String, Command> commands = new HashMap<>();
-    static AudioProvider provider;
+
 
     public Bot() throws IOException{
         AudioPlayerTest();
@@ -89,20 +89,38 @@ public class Bot {
 
         final AudioPlayer audio = player.createPlayer();
 
-        provider = new LavaPlayerAudioProvider(audio);
-    }
+        final AudioProvider provider = new LavaPlayerAudioProvider(audio);
 
-    static {
-        commands.put("ping", event -> 
-            event.getMessage()
-            .getChannel()
-            .flatMap(channel -> 
-                channel.createMessage("Pong!"))
-                .then());
+        final TrackScheduler scheduler = new TrackScheduler(audio);
+
         commands.put("join", event -> Mono.justOrEmpty(event.getMember())
             .flatMap(Member::getVoiceState)
             .flatMap(VoiceState::getChannel)
             .flatMap(channel -> channel.join().withProvider(provider)).then());
+
+        commands.put("play", event -> Mono.justOrEmpty(event.getMessage()
+            .getContent()).map(content -> Arrays.asList(content.split(" "))).doOnNext(command -> 
+                player.loadItem(command.get(1), scheduler)).then());
+        
     }
+
+    // static {
+    //     final TrackScheduler scheduler = new TrackScheduler(audio);
+    //     commands.put("ping", event -> 
+    //         event.getMessage()
+    //         .getChannel()
+    //         .flatMap(channel -> 
+    //             channel.createMessage("Pong!"))
+    //             .then());
+
+    //     commands.put("join", event -> Mono.justOrEmpty(event.getMember())
+    //         .flatMap(Member::getVoiceState)
+    //         .flatMap(VoiceState::getChannel)
+    //         .flatMap(channel -> channel.join().withProvider(provider)).then());
+
+    //     commands.put("play", event -> Mono.justOrEmpty(event.getMessage()
+    //         .getContent()).map(content -> Arrays.asList(content.split(" "))).doOnNext(command -> 
+    //             player.loadItem(command.get(1), scheduler)).then());
+    // }
 
 }
